@@ -83,9 +83,9 @@ def European_2D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration
     VNew = VOld.copy()
     S = np.ones((NAS + 1))
     Payoff = S.copy()
-    Delta = S.copy()
-    Gamma = S.copy()
-    Theta = S.copy()
+    Delta_Final = S.copy()
+    Gamma_Final = S.copy()
+    Theta_Final = S.copy()
     output_df = pd.DataFrame()
 
     if OptionType == "P":
@@ -98,28 +98,51 @@ def European_2D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration
         S[i] = i * dS
         VOld[i] = max(q * (S[i] - Strike), 0)  # Remember that we are going backwards. K=0 corresponds to expiry.
         # Payoff will be the second column. Next columns will be today's option value and Greeks.
-        Payoff[i] = V[i, 0]
+        Payoff[i] = VOld[i]
 
     # Now we fill the interior of the grid.
     # Time loop.
     for k in range(1, NTS):
         # Asset Loop
         for i in range(1, NAS):
-            Delta = (V[i + 1, k - 1] - V[i - 1, k - 1]) / (2 * dS)
-            Gamma = (V[i + 1, k - 1] - 2 * V[i, k - 1] + V[i - 1, k - 1]) / (dS ** 2)
-            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - Risk_Free_Rate * S[i] * Delta + Risk_Free_Rate * V[
-                i, k - 1]
-            V[i, k] = V[i, k - 1] - dt * Theta
+            Delta = (VOld[i + 1] - VOld[i - 1]) / (2 * dS)
+            Gamma = (VOld[i + 1] - 2 * VOld[i] + VOld[i - 1]) / (dS ** 2)
+            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - Risk_Free_Rate * S[i] * Delta + Risk_Free_Rate * VOld[
+                i]
+            VNew[i] = VOld[i] - dt * Theta
+            # Now that the interior of the grid is filled we must fill boundaries. 
         if OptionType == "C":
-            V[0, k] = 0
+            VNew[0] = 0
         else:
-            V[0, k] = Strike * math.exp(-Risk_Free_Rate * k * dt)
-        V[NAS, k] = 2 * V[NAS - 1, k] - V[NAS - 2, k]
+            VNew[0] = Strike * math.exp(-Risk_Free_Rate * k * dt)
+        VNew[NAS] = 2 * VNew[NAS - 1] - VNew[NAS - 2]
+        VOld = VNew.copy()
         if EType == "Y":
             for i in range(NAS + 1):
-                V[i, k] = max(Payoff[i], V[i, k])
-
-    return np.around(V, decimals=3)
+                VOld[i] = max(Payoff[i], VOld[i])
+    for i in range(1, NAS):
+        # We only save all greeks values when we are at today's date.
+        Delta_Final[i] = (VOld[i + 1] - VOld[i - 1]) / (2 * dS)
+        Gamma_Final[i] = (VOld[i + 1] - 2 * VOld[i] + VOld[i - 1]) / (dS ** 2)
+        Theta_Final[i] = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma_Final[i] - Risk_Free_Rate * S[i] * Delta_Final[i] + \
+                         Risk_Free_Rate * VOld[i]
+    # For computing greeks on boundaries we will use forward and bacwards differences instead of central one.
+    Delta_Final[0] = (VOld[1] - VOld[0]) / dS
+    Delta_Final[NAS] = (VOld[NAS] - VOld[NAS - 1]) / dS
+    # For very high and almost null values of the stock value is almost lineal.
+    Gamma_Final[0] = 0
+    Gamma_Final[NAS] = 0
+    Theta_Final[0] = Risk_Free_Rate * VOld[0]
+    Theta_Final[NAS] = -(1 / 2) * Vol ** 2 * S[NAS] ** 2 * Gamma_Final[i] - Risk_Free_Rate * S[NAS] * Delta_Final[i] + \
+                       Risk_Free_Rate * VOld[NAS]
+    # Let us fill the output dataframe.
+    output_df["Stock Price"] = S
+    output_df["Payoff"] = Payoff
+    output_df["Option's Value"] = VOld
+    output_df["Delta"] = Delta_Final
+    output_df["Gamma"] = Gamma_Final
+    output_df["Theta"] = Theta_Final
+    return output_df
 
 
 if __name__ == "__main__":
@@ -127,5 +150,5 @@ if __name__ == "__main__":
     ir = .005
     E = 100
     T = 1
-    V = European_3D_Option_Value(sigma, ir, "C", E, T, "Y", 20)
+    V = European_2D_Option_Value(sigma, ir, "C", E, T, "Y", 20)
     print(V)
