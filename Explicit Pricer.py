@@ -4,12 +4,24 @@
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 
 import numpy as np
+import pandas as pd
 import math
 
 
-def European_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration, EType, NAS):
+def European_3D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration, EType, NAS):
     """
-
+    This method will compute all different prices on finite difference grid, going 
+    from nowadays (last timestep going backwards) to maturity (k = 0).
+    
+    :param Vol: 
+    :param Risk_Free_Rate: 
+    :param OptionType: 
+    :param Strike: 
+    :param Expiration: 
+    :param EType: 
+    :param NAS: 
+    :return: 
+    """"""
     :param Vol: Constant Volatility
     :param Risk_Free_Rate: Constant risk free rate
     :param OptionType: European Call or Put
@@ -61,10 +73,59 @@ def European_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration, E
     return np.around(V, decimals=3)
 
 
+def European_2D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration, EType, NAS):
+    # Step 1: Defining the variables that will be used.
+    dS = 2 * Strike / NAS  # How far we will go in terms of asset prices considered (in this case twice the strike).
+    dt = .9 / (Vol ** 2 + NAS ** 2)  # Defining the time-step (this choice is due to algorithm stability).
+    NTS = int(Expiration / dt) + 1
+    dt = Expiration / NTS  # Ensuring that expiration is an integer number of defined timesteps.
+    VOld = np.zeros((NAS + 1))
+    VNew = VOld.copy()
+    S = np.ones((NAS + 1))
+    Payoff = S.copy()
+    Delta = S.copy()
+    Gamma = S.copy()
+    Theta = S.copy()
+    output_df = pd.DataFrame()
+
+    if OptionType == "P":
+        q = -1
+    else:
+        q = 1
+    # Step 2: Initializing grid values at k = 0 (at expiry). This would be the contract's payoff.
+    for i in range(NAS + 1):
+        # This will be the first column (or even the index column) of out output dataframe.
+        S[i] = i * dS
+        VOld[i] = max(q * (S[i] - Strike), 0)  # Remember that we are going backwards. K=0 corresponds to expiry.
+        # Payoff will be the second column. Next columns will be today's option value and Greeks.
+        Payoff[i] = V[i, 0]
+
+    # Now we fill the interior of the grid.
+    # Time loop.
+    for k in range(1, NTS):
+        # Asset Loop
+        for i in range(1, NAS):
+            Delta = (V[i + 1, k - 1] - V[i - 1, k - 1]) / (2 * dS)
+            Gamma = (V[i + 1, k - 1] - 2 * V[i, k - 1] + V[i - 1, k - 1]) / (dS ** 2)
+            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - Risk_Free_Rate * S[i] * Delta + Risk_Free_Rate * V[
+                i, k - 1]
+            V[i, k] = V[i, k - 1] - dt * Theta
+        if OptionType == "C":
+            V[0, k] = 0
+        else:
+            V[0, k] = Strike * math.exp(-Risk_Free_Rate * k * dt)
+        V[NAS, k] = 2 * V[NAS - 1, k] - V[NAS - 2, k]
+        if EType == "Y":
+            for i in range(NAS + 1):
+                V[i, k] = max(Payoff[i], V[i, k])
+
+    return np.around(V, decimals=3)
+
+
 if __name__ == "__main__":
     sigma = 0.2
     ir = .005
     E = 100
     T = 1
-    V = European_Option_Value(sigma, ir, "C", E, T, "Y", 20)
+    V = European_3D_Option_Value(sigma, ir, "C", E, T, "Y", 20)
     print(V)
