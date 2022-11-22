@@ -6,7 +6,7 @@
 import numpy as np
 import pandas as pd
 import math
-
+import matplotlib.pyplot as plt
 
 def European_3D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration, EType, NAS):
     """
@@ -151,4 +151,5 @@ if __name__ == "__main__":
     E = 100
     T = 1
     V = European_2D_Option_Value(sigma, ir, "C", E, T, "Y", 20)
+    V["Payoff"].plot()
     print(V)
