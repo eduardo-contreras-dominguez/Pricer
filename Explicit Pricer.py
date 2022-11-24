@@ -8,20 +8,12 @@ import pandas as pd
 import math
 import matplotlib.pyplot as plt
 
-def European_3D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration, EType, NAS):
+
+def European_3D_Vanilla_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration, EType, DividendYield, NAS):
     """
     This method will compute all different prices on finite difference grid, going 
     from nowadays (last timestep going backwards) to maturity (k = 0).
-    
-    :param Vol: 
-    :param Risk_Free_Rate: 
-    :param OptionType: 
-    :param Strike: 
-    :param Expiration: 
-    :param EType: 
-    :param NAS: 
-    :return: 
-    """"""
+
     :param Vol: Constant Volatility
     :param Risk_Free_Rate: Constant risk free rate
     :param OptionType: European Call or Put
@@ -29,8 +21,9 @@ def European_3D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration
     :param Expiration: How far is marturity from now
     :param EType: American ("Y") or European Option
     :param NAS: Number of asset time steps
+    :param DividendYield: Yield of dividend in  the stock
 
-    :return: Will return an array representing the grid of explicit finite-difference method.
+    :return: Array representing the grid of explicit finite-difference method.
     """
 
     # Step 1: Defining the variables that will be used.
@@ -58,7 +51,7 @@ def European_3D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration
         for i in range(1, NAS):
             Delta = (V[i + 1, k - 1] - V[i - 1, k - 1]) / (2 * dS)
             Gamma = (V[i + 1, k - 1] - 2 * V[i, k - 1] + V[i - 1, k - 1]) / (dS ** 2)
-            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - Risk_Free_Rate * S[i] * Delta + Risk_Free_Rate * V[
+            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - (Risk_Free_Rate - DividendYield) * S[i] * Delta + Risk_Free_Rate * V[
                 i, k - 1]
             V[i, k] = V[i, k - 1] - dt * Theta
         if OptionType == "C":
@@ -73,7 +66,7 @@ def European_3D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration
     return np.around(V, decimals=3)
 
 
-def European_2D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration, EType, NAS):
+def European_2D_Vanilla_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration, EType, DividendYield, NAS):
     # Step 1: Defining the variables that will be used.
     dS = 2 * Strike / NAS  # How far we will go in terms of asset prices considered (in this case twice the strike).
     dt = .9 / (Vol ** 2 + NAS ** 2)  # Defining the time-step (this choice is due to algorithm stability).
@@ -107,8 +100,9 @@ def European_2D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration
         for i in range(1, NAS):
             Delta = (VOld[i + 1] - VOld[i - 1]) / (2 * dS)
             Gamma = (VOld[i + 1] - 2 * VOld[i] + VOld[i - 1]) / (dS ** 2)
-            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - Risk_Free_Rate * S[i] * Delta + Risk_Free_Rate * VOld[
-                i]
+            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - (Risk_Free_Rate - DividendYield) * S[
+                i] * Delta + Risk_Free_Rate * VOld[
+                        i]
             VNew[i] = VOld[i] - dt * Theta
             # Now that the interior of the grid is filled we must fill boundaries. 
         if OptionType == "C":
@@ -124,7 +118,8 @@ def European_2D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration
         # We only save all greeks values when we are at today's date.
         Delta_Final[i] = (VOld[i + 1] - VOld[i - 1]) / (2 * dS)
         Gamma_Final[i] = (VOld[i + 1] - 2 * VOld[i] + VOld[i - 1]) / (dS ** 2)
-        Theta_Final[i] = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma_Final[i] - Risk_Free_Rate * S[i] * Delta_Final[i] + \
+        Theta_Final[i] = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma_Final[i] - (Risk_Free_Rate - DividendYield) * S[i] * \
+                         Delta_Final[i] + \
                          Risk_Free_Rate * VOld[i]
     # For computing greeks on boundaries we will use forward and bacwards differences instead of central one.
     Delta_Final[0] = (VOld[1] - VOld[0]) / dS
@@ -133,7 +128,8 @@ def European_2D_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Expiration
     Gamma_Final[0] = 0
     Gamma_Final[NAS] = 0
     Theta_Final[0] = Risk_Free_Rate * VOld[0]
-    Theta_Final[NAS] = -(1 / 2) * Vol ** 2 * S[NAS] ** 2 * Gamma_Final[i] - Risk_Free_Rate * S[NAS] * Delta_Final[i] + \
+    Theta_Final[NAS] = -(1 / 2) * Vol ** 2 * S[NAS] ** 2 * Gamma_Final[i] - (Risk_Free_Rate - DividendYield) * S[NAS] * \
+                       Delta_Final[i] + \
                        Risk_Free_Rate * VOld[NAS]
     # Let us fill the output dataframe.
     output_df["Stock Price"] = S
@@ -150,6 +146,6 @@ if __name__ == "__main__":
     ir = .005
     E = 100
     T = 1
-    V = European_2D_Option_Value(sigma, ir, "C", E, T, "Y", 20)
-    V["Payoff"].plot()
+    V = European_2D_Vanilla_Option_Value(sigma, ir, "C", E, T, "Y", 0, 40)
+    V["Delta"].plot()
     print(V)
