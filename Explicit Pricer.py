@@ -51,8 +51,9 @@ def European_3D_Vanilla_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Ex
         for i in range(1, NAS):
             Delta = (V[i + 1, k - 1] - V[i - 1, k - 1]) / (2 * dS)
             Gamma = (V[i + 1, k - 1] - 2 * V[i, k - 1] + V[i - 1, k - 1]) / (dS ** 2)
-            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - (Risk_Free_Rate - DividendYield) * S[i] * Delta + Risk_Free_Rate * V[
-                i, k - 1]
+            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - (Risk_Free_Rate - DividendYield) * S[
+                i] * Delta + Risk_Free_Rate * V[
+                        i, k - 1]
             V[i, k] = V[i, k - 1] - dt * Theta
         if OptionType == "C":
             V[0, k] = 0
@@ -141,11 +142,75 @@ def European_2D_Vanilla_Option_Value(Vol, Risk_Free_Rate, OptionType, Strike, Ex
     return output_df
 
 
+def Barrier_Option_Value(Asset, Strike, Expiration, Vol, Risk_Free_Rate, DividendYield, OptionType, Barrier, NAS, EType = "N"):
+    """
+    Output the value of a Barrier Option. In our case a down-and-out call option.
+
+    :param Asset: Current Asset's Price
+    :param Strike: Strike of the option
+    :param Expiration: Time to Maturity
+    :param Vol: Constant volatility term
+    :param Risk_Free_Rate:
+    :param DividendYield: Dividend Yield on this option
+    :param OptionType: C or P for Call or Put
+    :param Barrier: Barrier Value (If the option touches the barrier it becomes worthless)
+    :param NAS: Number of Asset Steps
+    :param EType: Early Exercise or not.
+
+    :return: Value of the exotic option.
+    """
+    dS = 2 * Strike / NAS  # How far we will go in terms of asset prices considered (in this case twice the strike).
+    NearestGridPt = int((Asset - Barrier)/dS) # Defining the number of steps between Asset Level and the closest
+    # point to the barrier.
+    dummy = ((Asset - Barrier) - NearestGridPt*dS)/dS
+    dt = .9 / (Vol ** 2 + NAS ** 2)  # Defining the time-step (this choice is due to algorithm stability).
+    NTS = int(Expiration / dt) + 1
+    dt = Expiration / NTS  # Ensuring that expiration is an integer number of defined timesteps.
+    VOld = np.zeros((NAS + 1))
+    VNew = VOld.copy()
+    S = np.ones((NAS + 1))
+    Payoff = S.copy()
+
+    if OptionType == "P":
+        q = -1
+    else:
+        q = 1
+    # Step 2: Initializing grid values at k = 0 (at expiry). This would be the contract's payoff.
+    for i in range(NAS + 1):
+        # This will be the first column (or even the index column) of out output dataframe.
+        S[i] = Barrier + i * dS
+        VOld[i] = max(q * (S[i] - Strike), 0)  # Remember that we are going backwards. K=0 corresponds to expiry.
+        # Payoff will be the second column. Next columns will be today's option value and Greeks.
+        Payoff[i] = VOld[i]
+
+    # Now we fill the interior of the grid.
+    # Time loop.
+    for k in range(1, NTS):
+        # Asset Loop
+        for i in range(1, NAS):
+            Delta = (VOld[i + 1] - VOld[i - 1]) / (2 * dS)
+            Gamma = (VOld[i + 1] - 2 * VOld[i] + VOld[i - 1]) / (dS ** 2)
+            Theta = -(1 / 2) * Vol ** 2 * S[i] ** 2 * Gamma - (Risk_Free_Rate - DividendYield) * S[
+                i] * Delta + Risk_Free_Rate * VOld[
+                        i]
+            VNew[i] = VOld[i] - dt * Theta
+        # Now that the interior of the grid is filled we must fill boundaries.
+        #In a barrier, value of the option is 0.
+        VNew[0] = 0
+        VNew[NAS] = 2 * VNew[NAS - 1] - VNew[NAS - 2]
+        VOld = VNew.copy()
+        if EType == "Y":
+            for i in range(NAS + 1):
+                VOld[i] = max(Payoff[i], VOld[i])
+    BarrierValue = (1 - dummy)*VOld[NearestGridPt - 1] + dummy*VOld[NearestGridPt]
+    return BarrierValue
+
 if __name__ == "__main__":
     sigma = 0.2
     ir = .005
     E = 100
     T = 1
     V = European_2D_Vanilla_Option_Value(sigma, ir, "C", E, T, "Y", 0, 40)
-    V["Delta"].plot()
+    VExotic = Barrier_Option_Value(102, E, T, sigma, ir, 0, "C", 10, 40)
+    V["Option's Value"].plot()
     print(V)
