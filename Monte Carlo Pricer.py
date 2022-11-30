@@ -33,7 +33,8 @@ def simulate_asset_path(S0, risk_free_rate, volatility, NTS, T, N=10000):
 
 def Compute_Vanilla_European_Option_Value(S0, risk_free_rate, volatility, Expiry, Strike, Option_Type = "C"):
     """
-    Will compute the value of an European Vanilla Option using the asset paths on last method.
+    Will compute the value of an European Vanilla Option using the asset paths on last method. With deterministic
+    Interest rate.
 
     :param S0: Initial asset price
     :param risk_free_rate: spot risk-free rate
@@ -44,10 +45,18 @@ def Compute_Vanilla_European_Option_Value(S0, risk_free_rate, volatility, Expiry
 
     :return: PV of payoff's average.
     """
-
+    S_paths = simulate_asset_path(S0, risk_free_rate, volatility, 1000, Expiry)
+    last_price = S_paths[-1, :]
+    if Option_Type == "C":
+        q = 1
+    else:
+        q = -1
+    Payoff = [math.exp(-risk_free_rate * Expiry) * max(q*(element - Strike), 0) for element in last_price]
+    output = sum(Payoff)/len(Payoff)
+    return output
 
 if __name__ == "__main__":
-    df = simulate_asset_path(S0=100, risk_free_rate=0.05, volatility=0.1, NTS=1000, T=1)
+    price = Compute_Vanilla_European_Option_Value(S0=110, risk_free_rate=0.05, volatility=0.2,Expiry = 1, Strike= 100)
     #plt.plot(df)
     #plt.show()
     print("Hello")
