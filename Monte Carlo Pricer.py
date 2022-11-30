@@ -31,7 +31,8 @@ def simulate_asset_path(S0, risk_free_rate, volatility, NTS, T, N=10000):
                                                                      timestep])
     return realization_array
 
-def Compute_Vanilla_European_Option_Value(S0, risk_free_rate, volatility, Expiry, Strike, Option_Type = "C"):
+
+def Compute_Vanilla_European_Option_Value(S0, risk_free_rate, volatility, Expiry, Strike, Option_Type="C"):
     """
     Will compute the value of an European Vanilla Option using the asset paths on last method. With deterministic
     Interest rate.
@@ -51,12 +52,14 @@ def Compute_Vanilla_European_Option_Value(S0, risk_free_rate, volatility, Expiry
         q = 1
     else:
         q = -1
-    Payoff = [math.exp(-risk_free_rate * Expiry) * max(q*(element - Strike), 0) for element in last_price]
-    output = sum(Payoff)/len(Payoff)
-    return output
+    Payoff = [math.exp(-risk_free_rate * Expiry) * max(q * (element - Strike), 0) for element in last_price]
+    Delta_Payoff = [math.exp(-risk_free_rate * Expiry) * max(q * (element * (1 + 0.01) - Strike), 0) - math.exp(
+        -risk_free_rate * Expiry) * max(q * (element * (1 - 0.01) - Strike), 0) for element in last_price]
+    output = sum(Payoff) / len(Payoff)
+    Delta = (sum(Delta_Payoff) / len(Delta_Payoff)) / 2 * 0.01*S0
+    return output, Delta
+
 
 if __name__ == "__main__":
-    price = Compute_Vanilla_European_Option_Value(S0=110, risk_free_rate=0.05, volatility=0.2,Expiry = 1, Strike= 100)
-    #plt.plot(df)
-    #plt.show()
+    price, greek = Compute_Vanilla_European_Option_Value(S0=111, risk_free_rate=0.05, volatility=0.2, Expiry=1, Strike=100)
     print("Hello")
