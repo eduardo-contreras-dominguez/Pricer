@@ -56,10 +56,92 @@ def Compute_Vanilla_European_Option_Value(S0, risk_free_rate, volatility, Expiry
     Delta_Payoff = [math.exp(-risk_free_rate * Expiry) * max(q * (element * (1 + 0.01) - Strike), 0) - math.exp(
         -risk_free_rate * Expiry) * max(q * (element * (1 - 0.01) - Strike), 0) for element in last_price]
     output = sum(Payoff) / len(Payoff)
-    Delta = (sum(Delta_Payoff) / len(Delta_Payoff)) / 2 * 0.01*S0
+    Delta = (sum(Delta_Payoff) / len(Delta_Payoff)) / 2 * 0.01 * S0
     return output, Delta
 
 
+def Compute_Barrier_Option_Value(S0, risk_free_rate, volatility, Expiry, Strike, Barrier, Option_Type="C",
+                                 Barrier_Type="I"):
+    """
+    Will compute the value of an European Vanilla Option using the asset paths on last method. With deterministic
+    Interest rate.
+
+    :param S0: Initial asset price
+    :param risk_free_rate: spot risk-free rate
+    :param volatility: historical vol
+    :param Expiry: maturity of contract
+    :param Strike: Strike of the option
+    :param Barrier: Barrier value
+    :param Option_Type: Call or put
+    :param Barrier_Type: "I" or "O" for knock-in or knock-out
+
+    :return: PV of payoff's average.
+    """
+    # First analyze the difference between S0 and the barrier to see if it is an up or down option.
+    if S0 < Barrier:
+        Directional_Type = "UP"
+    else:
+        Directional_Type = "DOWN"
+
+    S_paths = simulate_asset_path(S0, risk_free_rate, volatility, 1000, Expiry)
+    last_price = S_paths[-1, :]
+    if Option_Type == "C":
+        q = 1
+    else:
+        q = -1
+    # Option's payoff if this was a vanilla one.
+    Payoff = [math.exp(-risk_free_rate * Expiry) * max(q * (element - Strike), 0) for element in last_price]
+    if Barrier_Type == "I":
+        if Directional_Type == "UP":
+            for path in range(len(last_price)):
+                Asset_path = S_paths[:, path]
+                if np.count_nonzero(Asset_path >= Barrier) > 0:
+                    d = 1
+                else:
+                    d = 0
+                Payoff[path] = d * Payoff[path]
+        else:
+            for path in range(len(last_price)):
+                Asset_path = S_paths[:, path]
+                if np.count_nonzero(Asset_path <= Barrier) > 0:
+                    d = 1
+                else:
+                    d = 0
+                Payoff[path] = d * Payoff[path]
+    if Barrier_Type == "O":
+        if Directional_Type == "UP":
+            for path in range(len(last_price)):
+                Asset_path = S_paths[:, path]
+                if np.count_nonzero(Asset_path >= Barrier) > 0:
+                    d = 0
+                else:
+                    d = 1
+                Payoff[path] = d * Payoff[path]
+        else:
+            for path in range(len(last_price)):
+                Asset_path = S_paths[:, path]
+                if np.count_nonzero(Asset_path <= Barrier) > 0:
+                    d = 0
+                else:
+                    d = 1
+                Payoff[path] = d * Payoff[path]
+
+    output = sum(Payoff) / len(Payoff)
+    return output
+
+
 if __name__ == "__main__":
-    price, greek = Compute_Vanilla_European_Option_Value(S0=111, risk_free_rate=0.05, volatility=0.2, Expiry=1, Strike=100)
+    # price, greek = Compute_Vanilla_European_Option_Value(S0=111, risk_free_rate=0.05, volatility=0.2, Expiry=1,
+    # Strike=100)
+    Compute_Barrier_Option_Value(
+        S0=100,
+        risk_free_rate=0.05,
+        volatility=0.2,
+        Expiry=1,
+        Strike=110,
+        Barrier=130,
+        Option_Type="C",
+        Barrier_Type="O"
+    )
+
     print("Hello")
