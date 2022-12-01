@@ -4,6 +4,7 @@ import math
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import utils
+import random
 
 
 def simulate_asset_path(S0, risk_free_rate, volatility, NTS, T, N=10000):
@@ -131,7 +132,8 @@ def Compute_Barrier_Option_Value(S0, risk_free_rate, volatility, Expiry, Strike,
     return output
 
 
-def Compute_Asian_Option_Value(S0, risk_free_rate, volatility, Expiry, LookBack_Period=30, Option_Type="C"):
+def Compute_Asian_Option_Value(S0, risk_free_rate, volatility, Expiry, LookBack_Period=30, Option_Type="C",
+                               DisplayMode=True):
     """
     Will compute the value of an European Vanilla Option using the asset paths on last method. With deterministic
     Interest rate.
@@ -142,17 +144,18 @@ def Compute_Asian_Option_Value(S0, risk_free_rate, volatility, Expiry, LookBack_
     :param Expiry: maturity of contract
     :param LookBack_Period: Number of days on which the averaging will be based
     :param Option_Type: Call or put
+    :param DisplayMode: A random asset path (risk free rate) will be shown in order to see if everything is correct
 
     :return: PV of payoff's average.
     """
     # Number of time divisions between today and option's maturity.
-    NTS = 120
+    NTS = 1000
     # convert the number of days entered as parameter to number of periods in the simulation.
     # You can choose one year to have 260 days (number of business days on a year). Or 365 if you want
     Number_Periods = int(LookBack_Period * (NTS / (Expiry * 365)))
     S_paths = simulate_asset_path(S0, risk_free_rate, volatility, NTS, Expiry)
     averages = [[S_paths[Number_Periods * i, path] for i in range(1, int(NTS / Number_Periods))] for path in
-        range(len(S_paths[0]))]
+                range(len(S_paths[0]))]
     averages = list(map(utils.mean, averages))
     last_price = S_paths[-1, :]
     if Option_Type == "C":
@@ -162,6 +165,13 @@ def Compute_Asian_Option_Value(S0, risk_free_rate, volatility, Expiry, LookBack_
     Payoff = [math.exp(-risk_free_rate * Expiry) * max(q * (last_price[i] - averages[i]), 0) for i in
               range(len(last_price))]
     output = sum(Payoff) / len(Payoff)
+    if DisplayMode:
+        Path_number = random.randint(0, len(S_paths[0]) - 1)
+        path = S_paths[:, Path_number]
+        average = averages[Path_number]
+        plt.axhline(average, color="red", linestyle="--")
+        plt.plot(path)
+        plt.show()
     return output
 
 
@@ -178,11 +188,6 @@ if __name__ == "__main__":
     #     Option_Type="C",
     #     Barrier_Type="O"
     # )
-    Compute_Asian_Option_Value(
-        S0=100,
-        risk_free_rate=0.05,
-        volatility=0.2,
-        Expiry=1,
-        LookBack_Period=30,
-        Option_Type="C")
+    Compute_Asian_Option_Value(S0=100, risk_free_rate=0.05, volatility=0.2, Expiry=1, LookBack_Period=30,
+                               Option_Type="C")
     print("Hello")
