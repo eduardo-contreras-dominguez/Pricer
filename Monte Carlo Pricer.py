@@ -3,6 +3,7 @@ import pandas as pd
 import math
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import utils
 
 
 def simulate_asset_path(S0, risk_free_rate, volatility, NTS, T, N=10000):
@@ -130,18 +131,58 @@ def Compute_Barrier_Option_Value(S0, risk_free_rate, volatility, Expiry, Strike,
     return output
 
 
+def Compute_Asian_Option_Value(S0, risk_free_rate, volatility, Expiry, LookBack_Period=30, Option_Type="C"):
+    """
+    Will compute the value of an European Vanilla Option using the asset paths on last method. With deterministic
+    Interest rate.
+
+    :param S0: Initial asset price
+    :param risk_free_rate: spot risk-free rate
+    :param volatility: historical vol
+    :param Expiry: maturity of contract
+    :param LookBack_Period: Number of days on which the averaging will be based
+    :param Option_Type: Call or put
+
+    :return: PV of payoff's average.
+    """
+    # Number of time divisions between today and option's maturity.
+    NTS = 120
+    # convert the number of days entered as parameter to number of periods in the simulation.
+    # You can choose one year to have 260 days (number of business days on a year). Or 365 if you want
+    Number_Periods = int(LookBack_Period * (NTS / (Expiry * 365)))
+    S_paths = simulate_asset_path(S0, risk_free_rate, volatility, NTS, Expiry)
+    averages = [[S_paths[Number_Periods * i, path] for i in range(1, int(NTS / Number_Periods))] for path in
+        range(len(S_paths[0]))]
+    averages = list(map(utils.mean, averages))
+    last_price = S_paths[-1, :]
+    if Option_Type == "C":
+        q = 1
+    else:
+        q = -1
+    Payoff = [math.exp(-risk_free_rate * Expiry) * max(q * (last_price[i] - averages[i]), 0) for i in
+              range(len(last_price))]
+    output = sum(Payoff) / len(Payoff)
+    return output
+
+
 if __name__ == "__main__":
     # price, greek = Compute_Vanilla_European_Option_Value(S0=111, risk_free_rate=0.05, volatility=0.2, Expiry=1,
     # Strike=100)
-    Compute_Barrier_Option_Value(
+    # Compute_Barrier_Option_Value(
+    #     S0=100,
+    #     risk_free_rate=0.05,
+    #     volatility=0.2,
+    #     Expiry=1,
+    #     Strike=110,
+    #     Barrier=130,
+    #     Option_Type="C",
+    #     Barrier_Type="O"
+    # )
+    Compute_Asian_Option_Value(
         S0=100,
         risk_free_rate=0.05,
         volatility=0.2,
         Expiry=1,
-        Strike=110,
-        Barrier=130,
-        Option_Type="C",
-        Barrier_Type="O"
-    )
-
+        LookBack_Period=30,
+        Option_Type="C")
     print("Hello")
