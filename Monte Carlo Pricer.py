@@ -133,7 +133,7 @@ def Compute_Barrier_Option_Value(S0, risk_free_rate, volatility, Expiry, Strike,
 
 
 def Compute_Asian_Option_Value(S0, risk_free_rate, volatility, Expiry, LookBack_Period=30, Option_Type="C",
-                               DisplayMode=True):
+                               DisplayMode=False):
     """
     Will compute the value of an European Vanilla Option using the asset paths on last method. With deterministic
     Interest rate.
