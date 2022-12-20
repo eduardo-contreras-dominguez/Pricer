@@ -1,4 +1,4 @@
-from numpy import random
+import numpy as np
 import math
 from matplotlib import pyplot as plt
 
@@ -15,8 +15,8 @@ def BoxMuller(number_of_variables):
     else:
         number_simulations = int((number_of_variables // 2) + 1)
     for simulation in range(number_simulations):
-        u1 = random.uniform()
-        u2 = random.uniform()
+        u1 = np.random.uniform()
+        u2 = np.random.uniform()
         x = math.sqrt(-2 * math.log(u1)) * math.cos(2 * math.pi * u2)
         y = math.sqrt(-2 * math.log(u1)) * math.sin(2 * math.pi * u2)
         simulated.append(x)
@@ -26,6 +26,28 @@ def BoxMuller(number_of_variables):
     else:
         output = simulated[:-1]
     return output
+
+
+def cholesky(cov):
+    """
+    Calculate the Cholesky decomposition of a correlation matrix.
+
+    Parameters:
+    - corr (numpy array): the correlation matrix
+
+    Returns:
+    - L (numpy array): the lower-triangular matrix of the Cholesky decomposition
+    """
+    n = cov.shape[0]
+    L = np.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1):
+            s = sum(L[i][k] * L[j][k] for k in range(j))
+            if i == j:
+                L[i][j] = np.sqrt(cov[i][i] - s)
+            else:
+                L[i][j] = (cov[i][j] - s) / L[j][j]
+    return L
 
 
 def Halton(n, b):
@@ -50,7 +72,5 @@ def Halton(n, b):
 
 if __name__ == "__main__":
     # E = Halton(4, 2)
-    sim = BoxMuller(10000)
-    plt.hist(sim, 20)
-    plt.show()
+    sim = cholesky(np.array([[1, .6], [.6, 1]]))
     print(sim)
