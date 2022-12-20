@@ -10,12 +10,15 @@ def numerical_euro_call(NDim, NoPts, IntRate, Div, Cov, Asset, Strike, Expiry):
     :param NoPts: Number of Monte Carlo simulations
     :param IntRate: Interest Rate
     :param Div: Dividend Yield for every asset
-    :param Cov: Covariance Matrix for every asset.
+    :param Cov: Covariance Matrix for every asset
     :param Asset: Current Asset Price
+    :param Strike: Strike of the current option
     :param Expiry: Time until Expiry
 
     :return: European Call Price
     """
+    # Maybe is a good idea to add the simulation of the normal random variable directly in this function. Difficult
+    #to put the Halton sequence coming from utils.
     # We will create the covariance matrix of normal random variables we have to simulate.
     Normal_Cov = np.zeros((NDim, NDim))
     for i in range(NDim):
@@ -35,5 +38,5 @@ def numerical_euro_call(NDim, NoPts, IntRate, Div, Cov, Asset, Strike, Expiry):
                 i] * math.sqrt(Expiry)
         # We suppose a call on a basket of assets (equal weight on each asset)
         Payoff = max(1 / NDim * sum(S) - Strike, 0)
-        suma+= Payoff
-    return suma*a
+        suma += Payoff
+    return suma * discount
