@@ -93,6 +93,7 @@ def Compute_Barrier_Option_Value(S0, risk_free_rate, volatility, Expiry, Strike,
         q = -1
     # Option's payoff if this was a vanilla one.
     Payoff = [math.exp(-risk_free_rate * Expiry) * max(q * (element - Strike), 0) for element in last_price]
+    #We will see now how many paths touched the barrier during option's life.
     if Barrier_Type == "I":
         if Directional_Type == "UP":
             for path in range(len(last_price)):
@@ -135,7 +136,7 @@ def Compute_Barrier_Option_Value(S0, risk_free_rate, volatility, Expiry, Strike,
 def Compute_Asian_Option_Value(S0, risk_free_rate, volatility, Expiry, LookBack_Period=30, Option_Type="C",
                                DisplayMode=False):
     """
-    Will compute the value of an European Vanilla Option using the asset paths on last method. With deterministic
+    Will compute the value of an Asian Vanilla Option using the asset paths on last method. With deterministic
     Interest rate.
 
     :param S0: Initial asset price
@@ -190,4 +191,4 @@ if __name__ == "__main__":
     # )
     Compute_Asian_Option_Value(S0=100, risk_free_rate=0.05, volatility=0.2, Expiry=1, LookBack_Period=30,
                                Option_Type="C")
-    print("Hello")
+    
